@@ -15,6 +15,19 @@ import AttendancePanel from './AttendancePanel';
 
 type AdminTab = 'USERS' | 'SPECIALTIES' | 'DEFINITIONS' | 'COURSES' | 'SUBJECTS' | 'ENROLLMENT' | 'NOTIFICATIONS' | 'CALENDAR' | 'ATTENDANCE' | 'REPORTS';
 
+const tabLabels: Record<AdminTab, string> = {
+    USERS: 'Usuarios',
+    SPECIALTIES: 'Especialidades',
+    DEFINITIONS: 'Def. Materias',
+    COURSES: 'Cursos',
+    SUBJECTS: 'Materias',
+    ENROLLMENT: 'Inscripciones',
+    NOTIFICATIONS: 'Comunicados',
+    CALENDAR: 'Calendario',
+    ATTENDANCE: 'Asistencia',
+    REPORTS: 'Reportes'
+};
+
 interface AdminPanelProps {
   currentUserRole: UserRole;
   currentUser: User;
@@ -288,7 +301,8 @@ const SubjectForm: React.FC<SubjectFormProps> = ({ subject, onChange, courses, t
                                     </label>
                                     <button type="button" onClick={() => handleRemoveSubstitute(idx)} className="text-slate-400 hover:text-rose-500 font-bold p-1 rounded-full hover:bg-rose-50 transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
@@ -376,6 +390,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
 
   // Reports State
   const [reportRole, setReportRole] = useState<string>('all');
+  const [reportCourseId, setReportCourseId] = useState<string>('');
+  const [reportGroup, setReportGroup] = useState<string>('');
+  const [reportStatus, setReportStatus] = useState<string>('active');
 
   useEffect(() => {
     fetchAllData();
@@ -451,6 +468,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
                 alert(result.message || "Error al eliminar usuario.");
                 return;
             }
+            // Logic continues to refreshData
         }
         else if (activeTab === 'COURSES') await deleteCourse(item.id);
         else if (activeTab === 'SUBJECTS') await deleteSubject(item.id);
@@ -470,12 +488,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
 
         if (isModalOpen) setIsModalOpen(false);
         await refreshData();
+        // Optional: Provide small visual feedback toast here if needed
     } catch (error) {
         console.error(error);
         alert("Ocurrió un error inesperado al intentar eliminar.");
     }
   };
 
+  // ... rest of component stays identical ...
   const handleOpenModal = (item?: any) => {
     if (activeTab === 'USERS') {
         if (item) setEditingUser({ ...item, password: '' });
@@ -777,7 +797,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
       XLSX.writeFile(workbook, `reporte_${reportRole}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  const handlePrintList = () => { 
+  const handlePrintList = (filterGroup?: string) => { 
     const course = courses.find(c => c.id === selectedCourseId);
     if(!course) return;
     const printWindow = window.open('', '_blank');
@@ -1099,7 +1119,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
           <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden animate-fade-in-up">
               {/* Header / Actions */}
               <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                  <h3 className="text-lg font-bold text-slate-800 capitalize">{activeTab.toLowerCase().replace('_', ' ')}</h3>
+                  <h3 className="text-lg font-bold text-slate-800 capitalize">{tabLabels[activeTab]}</h3>
                   <div className="flex items-center gap-3 w-full md:w-auto">
                       <div className="relative flex-1 md:w-64">
                           <input 
@@ -1382,7 +1402,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
                     onClick={() => setActiveTab(tab)}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${activeTab === tab ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
                  >
-                     {tab === 'DEFINITIONS' ? 'Definiciones' : tab.replace('_', ' ')}
+                     {tabLabels[tab]}
                  </button>
              ))}
          </div>

@@ -4,10 +4,9 @@ import { getAllUsers } from './authService';
 // --- MOCK DATA SPECIALTIES ---
 let specialties: Specialty[] = [
   { id: 'CB', name: 'Ciclo Básico', description: 'Materias comunes de 1ro a 3er año.' },
-  { id: 'COMP', name: 'Computación', description: 'Orientación en Software y Programación.' },
   { id: 'ELEC', name: 'Electromecánica', description: 'Mecánica, electricidad y automatización.' },
   { id: 'MMO', name: 'Maestro Mayor de Obras', description: 'Construcción y diseño civil.' },
-  { id: 'ROBO', name: 'Robótica', description: 'Especialidad nueva sin cursos asignados (Para probar eliminación).' },
+  { id: 'AUTO', name: 'Automotores', description: 'Mecánica, motores y electrónica automotriz.' },
 ];
 
 // --- MOCK DATA SUBJECT DEFINITIONS ---
@@ -22,7 +21,7 @@ let courses: Course[] = [
   { id: 'C1', name: '1° 1ra', specialtyId: 'CB', shift: 'Mañana', preceptorIds: ['prec-01'] },
   { id: 'C2', name: '2° 1ra', specialtyId: 'CB', shift: 'Tarde', preceptorIds: ['prec-02'] },
   { id: 'C3', name: '3° 1ra', specialtyId: 'CB', shift: 'Mañana', preceptorIds: ['prec-03', 'prec-01'] }, // Example of multiple preceptors
-  { id: 'C4', name: '4° 1ra', specialtyId: 'COMP', shift: 'Mañana', preceptorIds: ['prec-04'] },
+  { id: 'C4', name: '4° 1ra', specialtyId: 'AUTO', shift: 'Mañana', preceptorIds: ['prec-04'] },
   { id: 'C5', name: '5° 1ra', specialtyId: 'ELEC', shift: 'Tarde', preceptorIds: ['prec-05'] },
   { id: 'C6', name: '6° 1ra', specialtyId: 'MMO', shift: 'Vespertino', preceptorIds: ['prec-01'] },
 ];
@@ -74,11 +73,11 @@ let subjects: SubjectWithCourse[] = [
   { id: 'S3-01', name: 'Físico-Química', year: '3° Año', hours: 3, curriculumDesign: 'Base', teacherId: 'prof-02', teacherCondition: 'Titular', courseId: 'C3', formationArea: 'Formación Científico Tecnológica' },
   { id: 'S3-02', name: 'Matemática III', year: '3° Año', hours: 4, curriculumDesign: 'Base', teacherId: 'prof-09', teacherCondition: 'Titular', courseId: 'C3', formationArea: 'Formación General' },
 
-  // --- 4° 1ra Computación (C4) ---
-  { id: 'S4-01', name: 'Programación I', year: '4° Año', hours: 6, curriculumDesign: 'Algoritmos', teacherId: 'prof-04', teacherCondition: 'Titular', courseId: 'C4', formationArea: 'Formación Técnico Específica' },
-  { id: 'S4-02', name: 'Sistemas Operativos', year: '4° Año', hours: 4, curriculumDesign: 'Linux/Windows', teacherId: 'prof-09', teacherCondition: 'Titular', courseId: 'C4', formationArea: 'Formación Técnico Específica' },
-  { id: 'S4-03', name: 'Física', year: '4° Año', hours: 3, curriculumDesign: 'Mecánica', teacherId: 'prof-03', teacherCondition: 'Titular', courseId: 'C4', formationArea: 'Formación Científico Tecnológica' },
-  { id: 'S4-04', name: 'Arte', year: '4° Año', hours: 2, curriculumDesign: 'Historia del Arte', teacherId: 'prof-07', teacherCondition: 'Titular', courseId: 'C4', formationArea: 'Formación General' },
+  // --- 4° 1ra Automotores (C4) - Actualizado ---
+  { id: 'S4-01', name: 'Motores de Combustión', year: '4° Año', hours: 6, curriculumDesign: 'Ciclo Otto y Diesel', teacherId: 'prof-05', teacherCondition: 'Titular', courseId: 'C4', formationArea: 'Formación Técnico Específica' },
+  { id: 'S4-02', name: 'Sistemas Eléctricos', year: '4° Año', hours: 4, curriculumDesign: 'Electricidad del Automóvil', teacherId: 'prof-09', teacherCondition: 'Titular', courseId: 'C4', formationArea: 'Formación Técnico Específica' },
+  { id: 'S4-03', name: 'Física Aplicada', year: '4° Año', hours: 3, curriculumDesign: 'Mecánica', teacherId: 'prof-03', teacherCondition: 'Titular', courseId: 'C4', formationArea: 'Formación Científico Tecnológica' },
+  { id: 'S4-04', name: 'Dibujo Técnico', year: '4° Año', hours: 2, curriculumDesign: 'Planos Mecánicos', teacherId: 'prof-07', teacherCondition: 'Titular', courseId: 'C4', formationArea: 'Formación General' },
 
   // --- 5° 1ra Electromecánica (C5) ---
   { id: 'S5-01', name: 'Electrotecnia I', year: '5° Año', hours: 6, curriculumDesign: 'Circuitos', teacherId: 'prof-05', teacherCondition: 'Titular', courseId: 'C5', formationArea: 'Formación Técnico Específica' },
