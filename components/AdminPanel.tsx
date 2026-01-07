@@ -22,9 +22,6 @@ interface AdminPanelProps {
 
 const daysOfWeek: DayOfWeek[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-// --- Extracted Components (ScheduleEditor, SubjectForm) remain same as previous, abbreviated for brevity if no changes ---
-// Note: In full implementation, these components are critical. I will keep them fully included to avoid missing dependencies.
-
 const ScheduleEditor: React.FC<{
   schedules: ClassSchedule[] | undefined;
   onAdd: (s: ClassSchedule) => void;
@@ -291,8 +288,7 @@ const SubjectForm: React.FC<SubjectFormProps> = ({ subject, onChange, courses, t
                                     </label>
                                     <button type="button" onClick={() => handleRemoveSubstitute(idx)} className="text-slate-400 hover:text-rose-500 font-bold p-1 rounded-full hover:bg-rose-50 transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                        </svg>
+                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                                     </button>
                                 </div>
                             </div>
@@ -380,9 +376,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
 
   // Reports State
   const [reportRole, setReportRole] = useState<string>('all');
-  const [reportCourseId, setReportCourseId] = useState<string>('');
-  const [reportGroup, setReportGroup] = useState<string>('');
-  const [reportStatus, setReportStatus] = useState<string>('active');
 
   useEffect(() => {
     fetchAllData();
@@ -458,7 +451,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
                 alert(result.message || "Error al eliminar usuario.");
                 return;
             }
-            // Logic continues to refreshData
         }
         else if (activeTab === 'COURSES') await deleteCourse(item.id);
         else if (activeTab === 'SUBJECTS') await deleteSubject(item.id);
@@ -478,14 +470,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
 
         if (isModalOpen) setIsModalOpen(false);
         await refreshData();
-        // Optional: Provide small visual feedback toast here if needed
     } catch (error) {
         console.error(error);
         alert("Ocurrió un error inesperado al intentar eliminar.");
     }
   };
 
-  // ... rest of component stays identical ...
   const handleOpenModal = (item?: any) => {
     if (activeTab === 'USERS') {
         if (item) setEditingUser({ ...item, password: '' });
@@ -574,17 +564,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
         alert('Error al guardar.');
     } finally {
         setSaving(false);
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditingUser(prev => ({ ...prev, avatarUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -716,75 +695,89 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
       XLSX.writeFile(workbook, `listado_usuarios_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // --- OTHER PRINT HANDLERS (Reports Tab) ---
-  const handlePrintUsers = (roleFilter?: string) => {
-    // This is used by the Reports Tab logic
-    let usersToPrint = [...users];
-    if (roleFilter && roleFilter !== 'all') {
-        usersToPrint = usersToPrint.filter(u => u.roles.includes(roleFilter as UserRole));
-    }
-    if (roleFilter === UserRole.ALUMNO) {
-        if (reportCourseId) usersToPrint = usersToPrint.filter(u => u.courseId === reportCourseId);
-        if (reportGroup) usersToPrint = usersToPrint.filter(u => u.technicalGroup === reportGroup);
-        if (reportStatus === 'active') usersToPrint = usersToPrint.filter(u => u.isActive !== false);
-        else if (reportStatus === 'inactive') usersToPrint = usersToPrint.filter(u => u.isActive === false);
-    }
-    if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        usersToPrint = usersToPrint.filter(u => 
+  // --- REPORT TAB HELPERS ---
+  const getReportData = () => {
+    const term = searchTerm.toLowerCase();
+    return users.filter(u => {
+        const matchesSearch = 
             u.lastName.toLowerCase().includes(term) || 
             u.name.toLowerCase().includes(term) || 
-            u.dni.includes(term)
-        );
-    }
-    usersToPrint.sort((a, b) => a.lastName.localeCompare(b.lastName));
-    
-    // Original Print Format for Reports Tab (can be kept or unified, keeping specific for Reports tab flexibility)
-    // ... similar window.open logic ...
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-        printWindow.document.write(`
-            <html>
-                <head><title>Listado</title><style>body{font-family:sans-serif;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}th{background:#f0f0f0}</style></head>
-                <body>
-                    <h1>Padron de Usuarios</h1>
-                    <table><thead><tr><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Curso</th><th>Email</th></tr></thead><tbody>
-                    ${usersToPrint.map(u => `<tr><td>${u.lastName}</td><td>${u.name}</td><td>${u.dni}</td><td>${courses.find(c=>c.id===u.courseId)?.name||'-'}</td><td>${u.email||'-'}</td></tr>`).join('')}
-                    </tbody></table>
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
-        setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
-    }
+            u.dni.includes(term);
+        const matchesRole = reportRole === 'all' || u.roles.includes(reportRole as UserRole);
+        return matchesSearch && matchesRole;
+    }).sort((a, b) => a.lastName.localeCompare(b.lastName));
   };
 
-  // ... (Other print handlers: handlePrintTeacherLoad, handlePrintStructure, handlePrintSubjects, handlePrintList - no changes) ...
-  const handlePrintTeacherLoad = () => { 
-      const term = searchTerm.toLowerCase();
-      const teachersToPrint = users.filter(u => u.roles.includes(UserRole.DOCENTE) && (u.lastName.toLowerCase().includes(term) || u.name.toLowerCase().includes(term) || u.dni.includes(term))).sort((a,b) => a.lastName.localeCompare(b.lastName));
-      if (teachersToPrint.length === 0) { alert('No se encontraron docentes.'); return; }
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) return;
-      // ... content generation ...
-      printWindow.document.write(`<html><body><h1>Carga Horaria</h1><p>Docentes encontrados: ${teachersToPrint.length}</p></body></html>`); 
-      printWindow.document.close(); setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
-  };
-  const handlePrintStructure = () => { 
+  const handleReportPDF = () => {
+      const data = getReportData();
       const printWindow = window.open('', '_blank');
       if (printWindow) {
-          printWindow.document.write(`<html><body><h1>Estructura Escolar</h1><p>Listado de Cursos...</p></body></html>`);
-          printWindow.document.close(); setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
+          printWindow.document.write(`
+              <html>
+                  <head>
+                      <title>Reporte de Usuarios</title>
+                      <style>
+                          body { font-family: sans-serif; padding: 20px; font-size: 12px; }
+                          h1 { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+                          .meta { text-align: center; color: #666; margin-bottom: 20px; }
+                          table { width: 100%; border-collapse: collapse; }
+                          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                          th { background-color: #f2f2f2; font-weight: bold; text-transform: uppercase; font-size: 11px; }
+                          tr:nth-child(even) { background-color: #f9f9f9; }
+                      </style>
+                  </head>
+                  <body>
+                      <h1>Reporte de Usuarios</h1>
+                      <div class="meta">
+                          Filtro Rol: ${reportRole} | Cantidad: ${data.length}
+                      </div>
+                      <table>
+                          <thead>
+                              <tr>
+                                  <th>Apellido y Nombre</th>
+                                  <th>DNI</th>
+                                  <th>Celular</th>
+                                  <th>Fecha Nacimiento</th>
+                                  <th>Contacto (Email)</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              ${data.map(u => `
+                                  <tr>
+                                      <td><strong>${u.lastName}, ${u.name}</strong></td>
+                                      <td>${u.dni}</td>
+                                      <td>${u.phone || '-'}</td>
+                                      <td>${u.birthDate ? new Date(u.birthDate).toLocaleDateString() : '-'}</td>
+                                      <td>${u.email || '-'}</td>
+                                  </tr>
+                              `).join('')}
+                          </tbody>
+                      </table>
+                  </body>
+              </html>
+          `);
+          printWindow.document.close();
+          setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
       }
   };
-  const handlePrintSubjects = () => { 
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-          printWindow.document.write(`<html><body><h1>Plan de Estudios</h1><p>Detalle de materias...</p></body></html>`);
-          printWindow.document.close(); setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
-      }
+
+  const handleReportXLSX = () => {
+      const data = getReportData();
+      const exportData = data.map(u => ({
+          "Apellido": u.lastName,
+          "Nombre": u.name,
+          "DNI": u.dni,
+          "Celular": u.phone || '',
+          "Fecha Nacimiento": u.birthDate ? new Date(u.birthDate).toLocaleDateString() : '',
+          "Email": u.email || ''
+      }));
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte");
+      XLSX.writeFile(workbook, `reporte_${reportRole}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
-  const handlePrintList = (filterGroup?: string) => { 
+
+  const handlePrintList = () => { 
     const course = courses.find(c => c.id === selectedCourseId);
     if(!course) return;
     const printWindow = window.open('', '_blank');
@@ -1014,568 +1007,431 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUserRole, currentUser })
   );
 
   const renderReportsPanel = () => {
+    const reportData = getReportData();
+
+    return (
+        <div className="space-y-6 animate-fade-in-up">
+            {/* Filters */}
+            <div className="bg-white p-6 rounded-2xl shadow-soft border border-slate-100">
+                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    Filtros de Reporte
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Buscar (Apellido, DNI)</label>
+                        <input 
+                            type="text" 
+                            value={searchTerm} 
+                            onChange={handleSearch} 
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 text-sm" 
+                            placeholder="Ingrese nombre o documento..." 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Filtrar por Rol</label>
+                        <select 
+                            value={reportRole} 
+                            onChange={(e) => setReportRole(e.target.value)} 
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 text-sm"
+                        >
+                            <option value="all">Todos los Roles</option>
+                            {Object.values(UserRole).map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex items-end gap-2">
+                        <Button onClick={handleReportPDF} className="flex-1 bg-slate-800 hover:bg-slate-700">
+                            Imprimir / PDF
+                        </Button>
+                        <Button onClick={handleReportXLSX} className="flex-1 bg-emerald-600 hover:bg-emerald-500">
+                            Descargar Excel
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Table Preview */}
+            <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-500 uppercase">Vista Previa ({reportData.length} registros)</span>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+                            <tr>
+                                <th className="p-4">Apellido y Nombre</th>
+                                <th className="p-4">DNI</th>
+                                <th className="p-4">Celular</th>
+                                <th className="p-4">Fecha Nacimiento</th>
+                                <th className="p-4">Contacto (Email)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {reportData.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="p-8 text-center text-slate-400 italic">No se encontraron resultados con los filtros actuales.</td>
+                                </tr>
+                            ) : (
+                                reportData.map(u => (
+                                    <tr key={u.id} className="hover:bg-slate-50">
+                                        <td className="p-4 font-bold text-slate-700">{u.lastName}, {u.name}</td>
+                                        <td className="p-4 text-slate-600 font-mono text-xs">{u.dni}</td>
+                                        <td className="p-4 text-xs text-slate-500">{u.phone || '-'}</td>
+                                        <td className="p-4 text-xs text-slate-500">
+                                            {u.birthDate ? new Date(u.birthDate).toLocaleDateString() : '-'}
+                                        </td>
+                                        <td className="p-4 text-xs text-slate-500">{u.email || '-'}</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+  };
+
+  const renderList = () => {
+      const data = getFilteredData();
+      
       return (
-          <div className="animate-fade-in-up">
-              <div className="flex gap-4 mb-4"><input type="text" value={searchTerm} onChange={handleSearch} className="border p-2 rounded w-full" placeholder="Buscar..." /></div>
-              <div className="grid grid-cols-3 gap-6">
-                  <div className="border p-4 rounded shadow-sm">
-                      <h3>Padrones</h3>
-                      <select value={reportRole} onChange={(e)=>setReportRole(e.target.value)} className="w-full border p-2 rounded mb-2"><option value="all">Todos</option>{Object.values(UserRole).map(r=><option key={r} value={r}>{r}</option>)}</select>
-                      <Button onClick={() => handlePrintUsers(reportRole)} className="w-full">Imprimir</Button>
+          <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden animate-fade-in-up">
+              {/* Header / Actions */}
+              <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                  <h3 className="text-lg font-bold text-slate-800 capitalize">{activeTab.toLowerCase().replace('_', ' ')}</h3>
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                      <div className="relative flex-1 md:w-64">
+                          <input 
+                            type="text" 
+                            placeholder="Buscar..." 
+                            value={searchTerm}
+                            onChange={handleSearch}
+                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                          />
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                      </div>
+                      
+                      {activeTab === 'USERS' && (
+                        <div className="flex gap-2">
+                             <select 
+                                value={filterRole} 
+                                onChange={(e) => setFilterRole(e.target.value)} 
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none"
+                             >
+                                 <option value="">Todos los Roles</option>
+                                 {Object.values(UserRole).map(r => <option key={r} value={r}>{r}</option>)}
+                             </select>
+                             <select 
+                                value={filterStatus} 
+                                onChange={(e) => setFilterStatus(e.target.value)} 
+                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none"
+                             >
+                                 <option value="all">Todos (Estado)</option>
+                                 <option value="active">Activos</option>
+                                 <option value="inactive">Inactivos</option>
+                             </select>
+                             <div className="flex gap-1">
+                                <button onClick={handleDownloadUsersPDF} className="p-2 text-slate-500 hover:text-slate-800 bg-slate-100 rounded-lg" title="Imprimir Listado"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg></button>
+                                <button onClick={handleExportXLSX} className="p-2 text-emerald-600 hover:text-emerald-800 bg-emerald-50 rounded-lg" title="Exportar Excel"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg></button>
+                             </div>
+                        </div>
+                      )}
+
+                      <Button onClick={() => handleOpenModal()}>
+                          + Nuevo
+                      </Button>
                   </div>
+              </div>
+
+              {/* Table Content */}
+              <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+                          <tr>
+                             {/* Dynamic Headers based on ActiveTab */}
+                             {activeTab === 'USERS' && <><th className="p-4">Usuario</th><th className="p-4">DNI</th><th className="p-4">Roles</th><th className="p-4">Estado</th></>}
+                             {activeTab === 'COURSES' && <><th className="p-4">Curso</th><th className="p-4">Turno</th><th className="p-4">Especialidad</th><th className="p-4">Preceptores</th></>}
+                             {activeTab === 'SUBJECTS' && <><th className="p-4">Materia</th><th className="p-4">Curso</th><th className="p-4">Docente</th><th className="p-4">Carga</th></>}
+                             {activeTab === 'SPECIALTIES' && <><th className="p-4">ID</th><th className="p-4">Nombre</th><th className="p-4">Descripción</th></>}
+                             {activeTab === 'DEFINITIONS' && <><th className="p-4">Nombre</th><th className="p-4">Área</th><th className="p-4">Ciclo</th><th className="p-4">Horas</th></>}
+                             {activeTab === 'NOTIFICATIONS' && <><th className="p-4">Fecha</th><th className="p-4">Título</th><th className="p-4">Destinatarios</th><th className="p-4">Prioridad</th></>}
+                             {activeTab === 'CALENDAR' && <><th className="p-4">Fecha</th><th className="p-4">Evento</th><th className="p-4">Tipo</th><th className="p-4">Descripción</th></>}
+                             <th className="p-4 text-right">Acciones</th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                          {data.length === 0 ? (
+                              <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">No se encontraron registros.</td></tr>
+                          ) : (
+                              data.map((item: any) => (
+                                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                      {activeTab === 'USERS' && (
+                                          <>
+                                              <td className="p-4">
+                                                  <div className="flex items-center gap-3">
+                                                      <img src={item.avatarUrl} alt="" className="w-8 h-8 rounded-full bg-slate-200" />
+                                                      <div>
+                                                          <div className="font-bold text-slate-800">{item.lastName}, {item.name}</div>
+                                                          <div className="text-xs text-slate-400">{item.email}</div>
+                                                      </div>
+                                                  </div>
+                                              </td>
+                                              <td className="p-4 text-slate-500 font-mono text-xs">{item.dni}</td>
+                                              <td className="p-4">
+                                                  <div className="flex flex-wrap gap-1">
+                                                      {item.roles.map((r: string) => (
+                                                          <span key={r} className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">{r}</span>
+                                                      ))}
+                                                  </div>
+                                              </td>
+                                              <td className="p-4">
+                                                  {item.isActive !== false ? 
+                                                    <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full text-xs font-bold">Activo</span> : 
+                                                    <span className="text-rose-600 bg-rose-50 px-2 py-1 rounded-full text-xs font-bold">Inactivo</span>
+                                                  }
+                                              </td>
+                                          </>
+                                      )}
+                                      
+                                      {activeTab === 'COURSES' && (
+                                          <>
+                                              <td className="p-4 font-bold text-slate-800">{item.name}</td>
+                                              <td className="p-4 text-slate-500">{item.shift}</td>
+                                              <td className="p-4 text-slate-500">{getSpecialtyName(item.specialtyId)}</td>
+                                              <td className="p-4 text-xs text-slate-400">{getPreceptorNames(item.preceptorIds)}</td>
+                                          </>
+                                      )}
+
+                                      {activeTab === 'SUBJECTS' && (
+                                          <>
+                                              <td className="p-4">
+                                                  <div className="font-bold text-slate-800">{item.name}</div>
+                                                  <div className="text-xs text-slate-400">{item.formationArea}</div>
+                                              </td>
+                                              <td className="p-4 text-slate-500">{getCourseName(item.courseId)}</td>
+                                              <td className="p-4">
+                                                  {item.formationArea === 'Formación Técnico Específica' ? (
+                                                      <span className="text-xs italic text-slate-400">{item.groups?.length || 0} Grupos</span>
+                                                  ) : (
+                                                      <div className="text-sm text-slate-600">{getTeacherName(item.teacherId)} <span className="text-xs text-slate-400">({item.teacherCondition})</span></div>
+                                                  )}
+                                              </td>
+                                              <td className="p-4 text-slate-500">{item.hours}hs</td>
+                                          </>
+                                      )}
+
+                                      {activeTab === 'SPECIALTIES' && (
+                                          <>
+                                              <td className="p-4 font-mono text-xs text-slate-500">{item.id}</td>
+                                              <td className="p-4 font-bold text-slate-800">{item.name}</td>
+                                              <td className="p-4 text-slate-500 text-xs max-w-xs truncate">{item.description}</td>
+                                          </>
+                                      )}
+
+                                      {activeTab === 'DEFINITIONS' && (
+                                          <>
+                                              <td className="p-4 font-bold text-slate-800">{item.name}</td>
+                                              <td className="p-4 text-slate-500 text-xs">{item.formationArea}</td>
+                                              <td className="p-4 text-slate-500 text-xs">{item.cycle}</td>
+                                              <td className="p-4 text-slate-500">{item.hours}hs</td>
+                                          </>
+                                      )}
+
+                                      {activeTab === 'NOTIFICATIONS' && (
+                                          <>
+                                              <td className="p-4 text-slate-500 text-xs">{new Date(item.date).toLocaleDateString()}</td>
+                                              <td className="p-4 font-bold text-slate-800">{item.title}</td>
+                                              <td className="p-4">
+                                                  <div className="flex flex-wrap gap-1">
+                                                      {item.targetRoles.map((r: string) => (
+                                                          <span key={r} className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">{r}</span>
+                                                      ))}
+                                                  </div>
+                                              </td>
+                                              <td className="p-4">
+                                                  <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${item.priority === 'Alta' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'}`}>
+                                                      {item.priority}
+                                                  </span>
+                                              </td>
+                                          </>
+                                      )}
+
+                                      {activeTab === 'CALENDAR' && (
+                                          <>
+                                              <td className="p-4 text-slate-500 text-xs">{new Date(item.date).toLocaleDateString()}</td>
+                                              <td className="p-4 font-bold text-slate-800">{item.title}</td>
+                                              <td className="p-4 text-slate-500 text-xs">{item.type}</td>
+                                              <td className="p-4 text-slate-500 text-xs truncate max-w-xs">{item.description}</td>
+                                          </>
+                                      )}
+
+                                      <td className="p-4 text-right">
+                                          <div className="flex items-center justify-end gap-2">
+                                              <button onClick={() => handleOpenModal(item)} className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Editar">
+                                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                                              </button>
+                                              <button onClick={() => handleDelete(item)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Eliminar">
+                                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                                              </button>
+                                          </div>
+                                      </td>
+                                  </tr>
+                              ))
+                          )}
+                      </tbody>
+                  </table>
               </div>
           </div>
       );
   };
 
+  const renderEnrollmentPanel = () => {
+    // Filter only students without course or with course if we want to move them
+    // For simplicity: List all students, allow assigning/changing course.
+    const allStudents = users.filter(u => u.roles.includes(UserRole.ALUMNO));
+    const studentsToDisplay = allStudents.filter(s => {
+        const matchSearch = s.lastName.toLowerCase().includes(searchTerm.toLowerCase()) || s.dni.includes(searchTerm);
+        if (selectedCourseId) return matchSearch && s.courseId === selectedCourseId;
+        return matchSearch; // if no course selected, show all (or filtered by search)
+    });
+
+    return (
+        <div className="space-y-6 animate-fade-in-up">
+            <div className="bg-white p-6 rounded-2xl shadow-soft border border-slate-100">
+                <h3 className="font-bold text-slate-800 mb-4">Gestión de Matrícula e Inscripciones</h3>
+                <div className="flex gap-4 items-end">
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Seleccionar Curso</label>
+                        <select 
+                            value={selectedCourseId} 
+                            onChange={(e) => setSelectedCourseId(e.target.value)} 
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                        >
+                            <option value="">-- Todos los Alumnos / Sin Asignar --</option>
+                            {courses.map(c => <option key={c.id} value={c.id}>{c.name} - {getSpecialtyName(c.specialtyId)}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Buscar Alumno</label>
+                        <input type="text" value={searchTerm} onChange={handleSearch} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Nombre o DNI..." />
+                    </div>
+                    {selectedCourseId && <Button onClick={() => handlePrintList()}>🖨️ Imprimir Lista</Button>}
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+                        <tr>
+                            <th className="p-4">Alumno</th>
+                            <th className="p-4">DNI</th>
+                            <th className="p-4">Curso Actual</th>
+                            <th className="p-4">Grupo Taller</th>
+                            <th className="p-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {studentsToDisplay.map(student => (
+                            <tr key={student.id} className="hover:bg-slate-50">
+                                <td className="p-4 font-bold text-slate-800">{student.lastName}, {student.name}</td>
+                                <td className="p-4 text-slate-500">{student.dni}</td>
+                                <td className="p-4">
+                                    {student.courseId ? (
+                                        <span className="bg-brand-50 text-brand-600 px-2 py-1 rounded-lg text-xs font-bold">{getCourseName(student.courseId)}</span>
+                                    ) : (
+                                        <span className="text-slate-400 italic text-xs">Sin asignar</span>
+                                    )}
+                                </td>
+                                <td className="p-4">
+                                    <select 
+                                        value={student.technicalGroup || ''} 
+                                        onChange={(e) => handleUpdateGroup(student, e.target.value)}
+                                        className="bg-slate-50 border border-slate-200 rounded-lg text-xs px-2 py-1 outline-none"
+                                    >
+                                        <option value="">-</option>
+                                        <option value="A">Grupo A</option>
+                                        <option value="B">Grupo B</option>
+                                        <option value="C">Grupo C</option>
+                                    </select>
+                                </td>
+                                <td className="p-4 text-right">
+                                    {selectedCourseId && student.courseId !== selectedCourseId ? (
+                                        <button onClick={() => handleEnrollStudent(student)} className="text-brand-600 hover:underline text-xs font-bold">Asignar a este curso</button>
+                                    ) : student.courseId ? (
+                                        <button onClick={() => handleUnenrollStudent(student)} className="text-rose-500 hover:underline text-xs font-bold">Desmatricular</button>
+                                    ) : null}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
        {/* Tab Navigation */}
-       {(currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.DIRECTIVO || currentUserRole === UserRole.OFICINA_ALUMNOS) && (
-           <div className="flex overflow-x-auto pb-2 gap-2 custom-scrollbar">
-               {allowedTabs.includes('USERS') && <Button variant={activeTab === 'USERS' ? 'primary' : 'ghost'} onClick={() => setActiveTab('USERS')}>Usuarios</Button>}
-               {allowedTabs.includes('SPECIALTIES') && <Button variant={activeTab === 'SPECIALTIES' ? 'primary' : 'ghost'} onClick={() => setActiveTab('SPECIALTIES')}>Especialidades</Button>}
-               {allowedTabs.includes('DEFINITIONS') && <Button variant={activeTab === 'DEFINITIONS' ? 'primary' : 'ghost'} onClick={() => setActiveTab('DEFINITIONS')}>Def. Materias</Button>}
-               {allowedTabs.includes('COURSES') && <Button variant={activeTab === 'COURSES' ? 'primary' : 'ghost'} onClick={() => setActiveTab('COURSES')}>Cursos</Button>}
-               {allowedTabs.includes('SUBJECTS') && <Button variant={activeTab === 'SUBJECTS' ? 'primary' : 'ghost'} onClick={() => setActiveTab('SUBJECTS')}>Materias</Button>}
-               {allowedTabs.includes('ENROLLMENT') && <Button variant={activeTab === 'ENROLLMENT' ? 'primary' : 'ghost'} onClick={() => setActiveTab('ENROLLMENT')}>Inscripciones</Button>}
-               {allowedTabs.includes('NOTIFICATIONS') && <Button variant={activeTab === 'NOTIFICATIONS' ? 'primary' : 'ghost'} onClick={() => setActiveTab('NOTIFICATIONS')}>Notificaciones</Button>}
-               {allowedTabs.includes('CALENDAR') && <Button variant={activeTab === 'CALENDAR' ? 'primary' : 'ghost'} onClick={() => setActiveTab('CALENDAR')}>Calendario</Button>}
-               {allowedTabs.includes('REPORTS') && <Button variant={activeTab === 'REPORTS' ? 'primary' : 'ghost'} onClick={() => setActiveTab('REPORTS')}>Reportes</Button>}
-           </div>
+       {allowedTabs.length > 0 && (
+         <div className="bg-white p-1 rounded-2xl shadow-sm border border-slate-200 inline-flex flex-wrap gap-1">
+             {allowedTabs.map(tab => (
+                 <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${activeTab === tab ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+                 >
+                     {tab === 'DEFINITIONS' ? 'Definiciones' : tab.replace('_', ' ')}
+                 </button>
+             ))}
+         </div>
        )}
 
-       {/* Content */}
-       <div className="animate-fade-in-up">
-            {/* Search Bar for List Views */}
-            {['USERS', 'COURSES', 'SUBJECTS', 'SPECIALTIES', 'DEFINITIONS', 'NOTIFICATIONS', 'CALENDAR'].includes(activeTab) && (
-                <div className="flex justify-between items-center mb-6">
-                    <div className="relative w-full max-w-md">
-                        <span className="absolute left-3 top-2.5 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                        </span>
-                        <input 
-                            type="text" 
-                            value={searchTerm} 
-                            onChange={handleSearch} 
-                            placeholder={`Buscar en ${activeTab.toLowerCase()}...`}
-                            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
-                        />
-                    </div>
-                    <Button onClick={() => handleOpenModal()}>
-                        + Nuevo
-                    </Button>
-                </div>
-            )}
+       {/* Content Switch */}
+       {activeTab === 'ATTENDANCE' ? (
+           <AttendancePanel currentUser={currentUser} />
+       ) : activeTab === 'REPORTS' ? (
+           renderReportsPanel()
+       ) : activeTab === 'ENROLLMENT' ? (
+           renderEnrollmentPanel()
+       ) : (
+           // Generic List for USERS, COURSES, SUBJECTS, SPECIALTIES, DEFINITIONS, NOTIFICATIONS, CALENDAR
+           renderList()
+       )}
 
-            {/* USERS LIST */}
-            {activeTab === 'USERS' && (
-                <>
-                    <div className="flex flex-wrap gap-4 mb-4 items-center justify-between">
-                        <div className="flex gap-4 flex-wrap">
-                            <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none text-sm hover:border-brand-300 transition-colors">
-                                <option value="">Todos los Roles</option>
-                                {Object.values(UserRole).map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
-                            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none text-sm hover:border-brand-300 transition-colors">
-                                <option value="all">Todos los Estados</option>
-                                <option value="active">Activos</option>
-                                <option value="inactive">Inactivos</option>
-                            </select>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                            <button 
-                                onClick={handleDownloadUsersPDF} 
-                                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-700 transition-all shadow-lg shadow-slate-800/20 active:scale-95"
-                                title="Generar PDF (Listado de Contacto)"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                                PDF
-                            </button>
-                            <button 
-                                onClick={handleExportXLSX} 
-                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
-                                title="Descargar Excel (.xlsx)"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                XLSX
-                            </button>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
-                                <tr>
-                                    <th className="p-4">Usuario</th>
-                                    <th className="p-4">Estado</th>
-                                    <th className="p-4">Contacto</th>
-                                    <th className="p-4">Datos Personales</th>
-                                    <th className="p-4">F. Inscripción</th>
-                                    <th className="p-4">Inscripción</th> 
-                                    <th className="p-4">Observaciones</th>
-                                    <th className="p-4">Roles</th>
-                                    <th className="p-4 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {(getFilteredData() as User[]).map((u: User) => (
-                                    <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="p-4 flex items-center gap-3">
-                                            <img src={u.avatarUrl} className="w-8 h-8 rounded-full bg-slate-200" alt="" />
-                                            <div>
-                                                <div className="font-bold text-slate-800">{u.lastName}, {u.name}</div>
-                                                <div className="text-xs text-slate-400 font-mono">{u.dni}</div>
-                                            </div>
-                                        </td>
-                                        <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${u.isActive !== false ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                                {u.isActive !== false ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="text-xs text-slate-600">{u.email || '-'}</div>
-                                            <div className="text-xs text-slate-400 mt-0.5">{u.phone || '-'}</div>
-                                        </td>
-                                        <td className="p-4 text-slate-600 text-xs">
-                                            {u.birthDate ? new Date(u.birthDate).toLocaleDateString() : '-'}
-                                        </td>
-                                        <td className="p-4 text-xs text-slate-600">
-                                            {u.enrollmentDate ? new Date(u.enrollmentDate).toLocaleDateString() : '-'}
-                                        </td>
-                                        <td className="p-4">
-                                            {u.courseId ? (
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-slate-700">{getCourseName(u.courseId)}</span>
-                                                    {u.technicalGroup && (
-                                                        <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 w-fit mt-0.5">
-                                                            Taller: {u.technicalGroup}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-slate-300 text-xs">-</span>
-                                            )}
-                                        </td>
-                                        <td className="p-4 text-xs text-slate-500 max-w-xs whitespace-normal">
-                                            {u.notes || '-'}
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {u.roles.map(r => <span key={r} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] border border-slate-200">{r}</span>)}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-right space-x-2">
-                                            <button onClick={() => handleOpenModal(u)} className="text-slate-400 hover:text-brand-600">✏️</button>
-                                            <button 
-                                                onClick={() => handleDelete(u)} 
-                                                disabled={u.id === currentUser.id}
-                                                className={`transition-colors ${u.id === currentUser.id ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-rose-600'}`}
-                                                title={u.id === currentUser.id ? "No puede eliminarse a sí mismo" : "Eliminar usuario"}
-                                            >
-                                                🗑️
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
-            )}
-
-            {/* ... other tabs (COURSES, SUBJECTS, etc.) ... */}
-            {activeTab === 'COURSES' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {(getFilteredData() as Course[]).map((c: Course) => (
-                        <div key={c.id} className="bg-white p-6 rounded-2xl shadow-soft border border-slate-100 hover:shadow-lg transition-all group">
-                            <div className="flex justify-between items-start mb-4">
-                                <span className="bg-brand-50 text-brand-600 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide">{c.shift}</span>
-                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleOpenModal(c)} className="text-slate-400 hover:text-brand-600">✏️</button>
-                                    <button onClick={() => handleDelete(c)} className="text-slate-400 hover:text-rose-600">🗑️</button>
-                                </div>
-                            </div>
-                            <h3 className="text-2xl font-bold text-slate-800 mb-1">{c.name}</h3>
-                            <p className="text-sm text-slate-500 mb-4">{getSpecialtyName(c.specialtyId)}</p>
-                            <div className="pt-4 border-t border-slate-100">
-                                <p className="text-xs text-slate-400 font-bold uppercase mb-1">Preceptores</p>
-                                <p className="text-sm text-slate-700">{getPreceptorNames(c.preceptorIds)}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-            
-            {activeTab === 'SUBJECTS' && (
-                <div className="space-y-4">
-                     {(getFilteredData() as Subject[]).map((s: Subject) => (
-                         <div key={s.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:border-brand-200 transition-all flex justify-between items-center">
-                             <div>
-                                 <div className="flex items-center gap-2">
-                                     <h3 className="font-bold text-slate-800">{s.name}</h3>
-                                     <span className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-500">{s.year}</span>
-                                     <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">{getCourseName(s.courseId)}</span>
-                                 </div>
-                                 <div className="text-xs text-slate-500 mt-1 flex gap-3">
-                                     <span>{s.hours} hs</span>
-                                     <span>•</span>
-                                     <span>{s.formationArea}</span>
-                                     <span>•</span>
-                                     <span className={`${s.isOnLeave ? 'text-rose-500 font-bold' : ''}`}>
-                                        Titular: {getTeacherName(s.teacherId)} {s.isOnLeave ? '(Licencia)' : ''}
-                                     </span>
-                                 </div>
-                                 {s.groups && s.groups.length > 0 && (
-                                     <div className="mt-2 pl-4 border-l-2 border-slate-200 space-y-1">
-                                         {s.groups.map(g => (
-                                             <div key={g.id} className="text-xs text-slate-600 flex items-center gap-2">
-                                                 <span className="font-bold">{g.name}:</span> {getTeacherName(g.teacherId)}
-                                             </div>
-                                         ))}
-                                     </div>
-                                 )}
-                             </div>
-                             <div className="flex gap-2">
-                                 <button onClick={() => handleOpenModal(s)} className="p-2 text-slate-400 hover:text-brand-600 hover:bg-slate-50 rounded-lg">✏️</button>
-                                 <button onClick={() => handleDelete(s)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg">🗑️</button>
-                             </div>
-                         </div>
-                     ))}
-                </div>
-            )}
-            
-            {activeTab === 'SPECIALTIES' && (
-                 <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
-                            <tr>
-                                <th className="p-4">Nombre</th>
-                                <th className="p-4">Descripción</th>
-                                <th className="p-4 text-center">Cant. Cursos</th>
-                                <th className="p-4 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {getFilteredData().map((item: any) => {
-                                // Calculate course usage for specialties view
-                                const usageCount = courses.filter(c => c.specialtyId === item.id).length;
-                                return (
-                                <tr key={item.id} className="hover:bg-slate-50">
-                                    <td className="p-4 font-bold text-slate-800">{item.name}</td>
-                                    <td className="p-4 text-slate-600">{item.description}</td>
-                                    <td className="p-4 text-center">
-                                        {usageCount > 0 ? (
-                                            <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded-full text-xs font-bold border border-amber-200" title="Existen cursos asociados">
-                                                {usageCount} cursos
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-400 text-xs">Sin uso</span>
-                                        )}
-                                    </td>
-                                    <td className="p-4 text-right space-x-2">
-                                        <button onClick={() => handleOpenModal(item)} className="text-slate-400 hover:text-brand-600">✏️</button>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => handleDelete(item)} 
-                                            className="text-slate-400 hover:text-rose-600 transition-colors" 
-                                            title="Eliminar"
-                                        >
-                                            🗑️
-                                        </button>
-                                    </td>
-                                </tr>
-                            )})}
-                        </tbody>
-                    </table>
-                 </div>
-            )}
-
-            {activeTab === 'DEFINITIONS' && (
-                 <div className="bg-white rounded-2xl shadow-soft border border-slate-100 overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
-                            <tr>
-                                <th className="p-4">Nombre</th>
-                                <th className="p-4">Detalles</th>
-                                <th className="p-4 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {getFilteredData().map((item: any) => (
-                                <tr key={item.id} className="hover:bg-slate-50">
-                                    <td className="p-4 font-bold text-slate-800">{item.name}</td>
-                                    <td className="p-4 text-slate-600">{item.hours}hs - {item.cycle}</td>
-                                    <td className="p-4 text-right space-x-2">
-                                        <button onClick={() => handleOpenModal(item)} className="text-slate-400 hover:text-brand-600">✏️</button>
-                                        <button type="button" onClick={() => handleDelete(item)} className="text-slate-400 hover:text-rose-600">🗑️</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                 </div>
-            )}
-
-            {activeTab === 'NOTIFICATIONS' && (
-                <div className="space-y-4">
-                     {(getFilteredData() as Notification[]).map((n: Notification) => (
-                         <div key={n.id} className="bg-white p-5 rounded-xl shadow-soft border border-slate-100">
-                             <div className="flex justify-between items-start mb-2">
-                                 <div>
-                                     <h3 className="font-bold text-slate-800">{n.title}</h3>
-                                     <div className="text-xs text-slate-400 mt-0.5">{new Date(n.date).toLocaleDateString()} • {n.senderName}</div>
-                                 </div>
-                                 <div className="flex items-center gap-3">
-                                     {n.priority === 'Alta' && <span className="bg-rose-100 text-rose-600 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Alta</span>}
-                                     <button onClick={() => handleDelete(n)} className="text-slate-400 hover:text-rose-600">🗑️</button>
-                                 </div>
-                             </div>
-                             <p className="text-sm text-slate-600 mb-3">{n.message}</p>
-                             <div className="flex gap-2">
-                                 {n.targetRoles.map(r => <span key={r} className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded">{r}</span>)}
-                             </div>
-                         </div>
-                     ))}
-                </div>
-            )}
-
-            {activeTab === 'CALENDAR' && (
-                <div className="space-y-4">
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {(getFilteredData() as CalendarEvent[]).map((e: CalendarEvent) => (
-                             <div key={e.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
-                                 <div>
-                                     <div className="flex justify-between items-start">
-                                         <span className="text-xs font-bold text-slate-400 uppercase">{new Date(e.date).toLocaleDateString()}</span>
-                                         <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${e.type === 'Feriado' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'}`}>{e.type}</span>
-                                     </div>
-                                     <h3 className="font-bold text-slate-800 mt-2">{e.title}</h3>
-                                     <p className="text-sm text-slate-500 mt-1">{e.description}</p>
-                                 </div>
-                                 <div className="mt-4 flex justify-end gap-2 border-t border-slate-50 pt-2">
-                                     <button onClick={() => handleOpenModal(e)} className="text-xs font-bold text-brand-600">Editar</button>
-                                     <button onClick={() => handleDelete(e)} className="text-xs font-bold text-rose-600">Eliminar</button>
-                                 </div>
-                             </div>
-                        ))}
-                     </div>
-                </div>
-            )}
-            
-            {/* ENROLLMENT (Custom View) */}
-            {activeTab === 'ENROLLMENT' && (
-                <div className="bg-white p-6 rounded-2xl shadow-soft border border-slate-100 animate-fade-in-up">
-                    <h3 className="font-bold text-slate-800 mb-6">Gestión de Inscripciones</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                         <div className="md:col-span-1 border-r border-slate-100 pr-6">
-                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Seleccionar Curso</label>
-                             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                                 {courses.map(c => (
-                                     <button 
-                                        key={c.id} 
-                                        onClick={() => setSelectedCourseId(c.id)}
-                                        className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${selectedCourseId === c.id ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                                     >
-                                         <div className="flex justify-between">
-                                             <span>{c.name}</span>
-                                             <span className="text-xs opacity-70">{c.shift}</span>
-                                         </div>
-                                         <div className="text-xs opacity-50 mt-1">{getSpecialtyName(c.specialtyId)}</div>
-                                     </button>
-                                 ))}
-                             </div>
-                         </div>
-                         <div className="md:col-span-2 flex flex-col h-full">
-                             {!selectedCourseId ? (
-                                 <div className="h-full flex flex-col items-center justify-center text-slate-400 italic p-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                     Seleccione un curso del menú izquierdo para gestionar sus alumnos.
-                                 </div>
-                             ) : (
-                                 <div className="flex flex-col h-full space-y-6">
-                                     {/* LISTADO DE INSCRIPTOS */}
-                                     <div className="flex-1 bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col min-h-[300px]">
-                                         <div className="flex justify-between items-center mb-4">
-                                             <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                                                 <span className="bg-brand-100 text-brand-700 px-2 py-0.5 rounded text-xs">
-                                                     {users.filter(u => u.courseId === selectedCourseId && u.roles.includes(UserRole.ALUMNO)).length}
-                                                 </span>
-                                                 Inscriptos en {getCourseName(selectedCourseId)}
-                                             </h4>
-                                             <Button variant="outline" className="text-xs py-1.5 h-8" onClick={() => handlePrintList()}>🖨️ Lista</Button>
-                                         </div>
-                                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
-                                              <table className="w-full text-sm">
-                                                  <thead className="sticky top-0 bg-slate-50 z-10">
-                                                      <tr className="text-left text-xs text-slate-400 uppercase border-b border-slate-200">
-                                                          <th className="pb-2 pl-2">Alumno</th>
-                                                          <th className="pb-2">Grupo Taller</th>
-                                                          <th className="pb-2 text-right pr-2">Acción</th>
-                                                      </tr>
-                                                  </thead>
-                                                  <tbody className="divide-y divide-slate-200">
-                                                      {users.filter(u => u.courseId === selectedCourseId && u.roles.includes(UserRole.ALUMNO)).length === 0 && (
-                                                          <tr><td colSpan={3} className="py-8 text-center text-slate-400 italic">No hay alumnos inscriptos en este curso.</td></tr>
-                                                      )}
-                                                      {users
-                                                        .filter(u => u.courseId === selectedCourseId && u.roles.includes(UserRole.ALUMNO))
-                                                        .sort((a, b) => a.lastName.localeCompare(b.lastName))
-                                                        .map(u => (
-                                                          <tr key={u.id} className="hover:bg-slate-100/50 transition-colors">
-                                                              <td className="py-2 pl-2 font-medium text-slate-700">{u.lastName}, {u.name}</td>
-                                                              <td className="py-2">
-                                                                  <select 
-                                                                    value={u.technicalGroup || ''} 
-                                                                    onChange={(e) => handleUpdateGroup(u, e.target.value)}
-                                                                    className="bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-brand-500 outline-none"
-                                                                  >
-                                                                      <option value="">-</option>
-                                                                      <option value="A">A</option>
-                                                                      <option value="B">B</option>
-                                                                      <option value="C">C</option>
-                                                                  </select>
-                                                              </td>
-                                                              <td className="py-2 text-right pr-2">
-                                                                  <button onClick={() => handleUnenrollStudent(u)} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded text-xs font-semibold transition-colors">Quitar</button>
-                                                              </td>
-                                                          </tr>
-                                                      ))}
-                                                  </tbody>
-                                              </table>
-                                         </div>
-                                     </div>
-                                     
-                                     {/* LISTADO DE ALUMNOS SIN ASIGNAR */}
-                                     <div className="border-t border-slate-100 pt-6">
-                                         <div className="flex justify-between items-end mb-3">
-                                             <div>
-                                                 <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                                                     Inscribir Alumno
-                                                     <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-normal">
-                                                         {users.filter(u => u.roles.includes(UserRole.ALUMNO) && !u.courseId).length} Disponibles
-                                                     </span>
-                                                 </h4>
-                                                 <p className="text-xs text-slate-400 mt-1">Listado de alumnos sin curso asignado actualmente.</p>
-                                             </div>
-                                         </div>
-                                         
-                                         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                             <div className="relative mb-3">
-                                                 <span className="absolute left-3 top-2.5 text-slate-400">
-                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                                 </span>
-                                                 <input 
-                                                    type="text" 
-                                                    placeholder="Buscar por DNI o Apellido..." 
-                                                    className="w-full pl-9 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-sm focus:ring-2 focus:ring-brand-500 transition-all"
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)} 
-                                                 />
-                                             </div>
-                                             
-                                             <div className="space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-1">
-                                                 {users.filter(u => u.roles.includes(UserRole.ALUMNO) && !u.courseId).length === 0 ? (
-                                                     <div className="text-center py-8 text-slate-400 italic text-sm">
-                                                         Todos los alumnos tienen curso asignado.
-                                                     </div>
-                                                 ) : (
-                                                     users
-                                                        .filter(u => u.roles.includes(UserRole.ALUMNO) && !u.courseId)
-                                                        .filter(u => 
-                                                            searchTerm === '' || 
-                                                            u.lastName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                                            u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                                            u.dni.includes(searchTerm)
-                                                        )
-                                                        .sort((a, b) => a.lastName.localeCompare(b.lastName))
-                                                        .map(u => (
-                                                         <div key={u.id} className="flex justify-between items-center bg-white p-3 border border-slate-100 rounded-lg hover:border-brand-300 hover:shadow-md transition-all group">
-                                                             <div className="flex items-center gap-3">
-                                                                 <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold border border-slate-200">
-                                                                     {u.name.charAt(0)}{u.lastName.charAt(0)}
-                                                                 </div>
-                                                                 <div>
-                                                                     <span className="block text-sm font-bold text-slate-700 group-hover:text-brand-700">{u.lastName}, {u.name}</span>
-                                                                     <span className="block text-xs text-slate-400 font-mono">DNI: {u.dni}</span>
-                                                                 </div>
-                                                             </div>
-                                                             <button 
-                                                                onClick={() => handleEnrollStudent(u)} 
-                                                                className="text-xs bg-brand-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-brand-700 shadow-sm shadow-brand-500/30 transition-all active:scale-95 flex items-center gap-1"
-                                                             >
-                                                                 <span>Inscribir</span>
-                                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                                             </button>
-                                                         </div>
-                                                     ))
-                                                 )}
-                                                 {/* Empty search state */}
-                                                 {searchTerm && users.filter(u => u.roles.includes(UserRole.ALUMNO) && !u.courseId && (u.lastName.toLowerCase().includes(searchTerm.toLowerCase()) || u.dni.includes(searchTerm))).length === 0 && (
-                                                     <div className="text-center py-4 text-slate-400 text-xs">
-                                                         No se encontraron alumnos con ese criterio.
-                                                     </div>
-                                                 )}
-                                             </div>
-                                         </div>
-                                     </div>
-                                 </div>
-                             )}
-                         </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ATTENDANCE (For Preceptors/Teachers) */}
-            {activeTab === 'ATTENDANCE' && (
-                <AttendancePanel currentUser={currentUser} />
-            )}
-            
-            {/* REPORTS */}
-            {activeTab === 'REPORTS' && renderReportsPanel()}
-       </div>
-
-       {/* MODAL */}
+       {/* Modal Form */}
        {isModalOpen && (
            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
-               <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
-                   <div className="bg-slate-50 px-8 py-5 border-b border-slate-100 flex justify-between items-center">
-                       <h3 className="text-xl font-bold text-slate-800">
-                           {activeTab === 'USERS' ? 'Gestión de Usuario' : 
-                            activeTab === 'COURSES' ? 'Editar Curso' : 
-                            activeTab === 'SUBJECTS' ? 'Editar Materia' : 'Editar Elemento'}
+               <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
+                   <div className="bg-slate-800 px-6 py-4 flex justify-between items-center text-white sticky top-0 z-20">
+                       <h3 className="text-lg font-bold">
+                           {activeTab === 'USERS' ? (editingUser.id ? 'Editar Usuario' : 'Nuevo Usuario') :
+                            activeTab === 'COURSES' ? (editingCourse.id ? 'Editar Curso' : 'Nuevo Curso') :
+                            activeTab === 'SUBJECTS' ? (editingSubject.id ? 'Editar Materia' : 'Nueva Materia') :
+                            activeTab === 'SPECIALTIES' ? 'Especialidad' :
+                            activeTab === 'DEFINITIONS' ? 'Definición Materia' :
+                            activeTab === 'NOTIFICATIONS' ? 'Comunicado' :
+                            activeTab === 'CALENDAR' ? 'Evento' : 'Editar'}
                        </h3>
-                       <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
-                           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                       <button onClick={() => setIsModalOpen(false)} className="hover:bg-slate-700 rounded-full p-1 transition-colors">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                        </button>
                    </div>
                    
-                   <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8">
+                   <form onSubmit={handleSubmit} className="p-6">
                        {activeTab === 'USERS' && renderUserForm()}
+                       {activeTab === 'COURSES' && renderCourseForm()}
+                       {activeTab === 'SUBJECTS' && <SubjectForm subject={editingSubject} onChange={setEditingSubject} courses={courses} teachers={teachers} getSpecialtyName={getSpecialtyName} getTeacherName={getTeacherName} />}
                        {activeTab === 'SPECIALTIES' && renderSpecialtyForm()}
                        {activeTab === 'DEFINITIONS' && renderDefinitionForm()}
-                       {activeTab === 'COURSES' && renderCourseForm()}
-                       {activeTab === 'SUBJECTS' && (
-                           <SubjectForm 
-                               subject={editingSubject} 
-                               onChange={setEditingSubject} 
-                               courses={courses} 
-                               teachers={teachers} 
-                               getSpecialtyName={getSpecialtyName} 
-                               getTeacherName={getTeacherName} 
-                           />
-                       )}
                        {activeTab === 'NOTIFICATIONS' && renderNotificationForm()}
                        {activeTab === 'CALENDAR' && renderCalendarForm()}
-                       
-                       <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
+
+                       <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
                            <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-                           <Button type="submit" isLoading={saving}>Guardar</Button>
+                           <Button type="submit" isLoading={saving}>Guardar Cambios</Button>
                        </div>
                    </form>
                </div>
